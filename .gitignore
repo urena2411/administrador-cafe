@@ -1,0 +1,15 @@
+# Credenciales — nunca subir a GitHub
+.streamlit/secrets.toml
+
+# Archivos de Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Entornos virtuales
+venv/
+.env
+
+# Archivos del sistema
+.DS_Store
+Thumbs.db
