@@ -6,6 +6,10 @@ import streamlit as st
 import pandas as pd
 from utils.sheets import leer_hoja
 
+def redondear_colones(valor: float) -> int:
+    """Redondea al múltiplo de 10 más cercano. Ej: 5687 → 5690"""
+    return round(valor / 10) * 10
+
 st.set_page_config(
     page_title="Historial · Fincas Ureña",
     page_icon="📋",
@@ -112,7 +116,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Cargar datos ───────────────────────────────────────────
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=300)
 def cargar_todo():
     """Carga todas las hojas necesarias para el historial."""
     return {
@@ -248,7 +252,7 @@ if tipo == "Jornales":
         df_mostrar = df[["fecha","peon","finca","tarea","horas","precio_hora","pago"]].copy()
         df_mostrar["fecha"]       = pd.to_datetime(df_mostrar["fecha"]).dt.strftime("%d/%m/%Y")
         df_mostrar["precio_hora"] = df_mostrar["precio_hora"].apply(lambda x: f"₡{int(x):,}")
-        df_mostrar["pago"]        = df_mostrar["pago"].apply(lambda x: f"₡{int(x):,}")
+        df_mostrar["pago"] = df["pago"].apply(lambda x: f"₡{redondear_colones(x):,}")
         df_mostrar.columns        = ["Fecha","Peón","Finca","Tarea","Horas","₡/hora","Pago"]
         st.dataframe(df_mostrar, use_container_width=True, hide_index=True)
 
@@ -318,7 +322,7 @@ elif tipo == "Cosecha":
             Pago=("pago","sum")
         ).reset_index()
         por_rec["Cajuelas"] = por_rec["Cajuelas"].apply(lambda x: f"{x:.2f}")
-        por_rec["Pago"]     = por_rec["Pago"].apply(lambda x: f"₡{int(x):,}")
+        por_rec["Pago"] = por_rec["Pago"].apply(lambda x: f"₡{redondear_colones(x):,}")
         por_rec.columns     = ["Recolector","Cajuelas","Total pagado"]
         st.dataframe(por_rec, use_container_width=True, hide_index=True)
 

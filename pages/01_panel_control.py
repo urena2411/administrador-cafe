@@ -388,46 +388,58 @@ elif st.session_state["modulo_control"] == "precios":
 
     st.markdown('<div class="seccion">💰 Precios actuales</div>', unsafe_allow_html=True)
 
-    # Leer precios actuales del Sheet
     try:
         precios = leer_precios()
     except Exception as e:
         st.error(f"Error cargando precios: {e}")
         st.stop()
 
-    precio_hora    = precios.get("precio_hora", 1330)
-    precio_cajuela = precios.get("precio_cajuela", 1200)
-
     col_tabla, col_form = st.columns([3, 2])
 
-    # ── Precios actuales ───────────────────────────────────
     with col_tabla:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
+        
 
-        # Precio hora
-        col_n, col_v, col_x = st.columns([3, 2, 1])
-        with col_n:
-            st.markdown('<div class="fila-nombre">Precio por hora</div>', unsafe_allow_html=True)
-        with col_v:
-            st.markdown(f'<div class="fila-sub">CR{int(precio_hora):,}</div>', unsafe_allow_html=True)
-        with col_x:
-            if st.button("✏️", key="edit_hora", help="Editar precio hora"):
-                st.session_state["editando"] = "precio_hora"
+        # ── Precios por hora ───────────────────────────────
+        st.markdown("""
+        <div style="font-family:'Fraunces',serif; font-size:17px; font-weight:700; 
+        color:#F0C36B; padding:10px 0 8px 0; border-bottom:2px solid rgba(217,164,65,0.3); 
+        margin-bottom:12px;">⏱️ Precios por hora</div>
+        """, unsafe_allow_html=True)
 
-        st.divider()
+        for i in range(1, 4):
+            key = f"precio_hora_{i}"
+            valor = int(precios.get(key, 0))
+            col_n, col_v, col_x = st.columns([2, 2, 1])
+            with col_n:
+                st.markdown(f'<div class="fila-sub">Precio hora {i}</div>', unsafe_allow_html=True)
+            with col_v:
+                st.markdown(f'<div class="fila-sub">₡{valor:,}</div>', unsafe_allow_html=True)
+            with col_x:
+                if st.button("✏️", key=f"edit_{key}", help=f"Editar precio hora {i}"):
+                    st.session_state["editando"] = key
+            st.divider()
 
-        # Precio cajuela
-        col_n, col_v, col_x = st.columns([3, 2, 1])
-        with col_n:
-            st.markdown('<div class="fila-nombre">Precio por cajuela</div>', unsafe_allow_html=True)
-        with col_v:
-            st.markdown(f'<div class="fila-sub">CR{int(precio_cajuela):,}</div>', unsafe_allow_html=True)
-        with col_x:
-            if st.button("✏️", key="edit_cajuela", help="Editar precio cajuela"):
-                st.session_state["editando"] = "precio_cajuela"
+        # ── Precios por cajuela ────────────────────────────
+        st.markdown("""
+        <div style="font-family:'Fraunces',serif; font-size:17px; font-weight:700; 
+        color:#F0C36B; padding:10px 0 8px 0; border-bottom:2px solid rgba(217,164,65,0.3); 
+        margin-bottom:12px;">🍒 Precios por cajuela</div>
+        """, unsafe_allow_html=True)
 
-        st.divider()
-        st.caption(f"Estos precios se aplican automáticamente en los formularios de jornales y cosecha.")
+        for i in range(1, 4):
+            key = f"precio_cajuela_{i}"
+            valor = int(precios.get(key, 0))
+            col_n, col_v, col_x = st.columns([2, 2, 1])
+            with col_n:
+                st.markdown(f'<div class="fila-sub">Precio cajuela {i}</div>', unsafe_allow_html=True)
+            with col_v:
+                st.markdown(f'<div class="fila-sub">₡{valor:,}</div>', unsafe_allow_html=True)
+            with col_x:
+                if st.button("✏️", key=f"edit_{key}", help=f"Editar precio cajuela {i}"):
+                    st.session_state["editando"] = key
+            st.divider()
+
+        st.caption("Estos precios aparecen como opciones al registrar jornales y cosecha.")
         st.markdown('</div>', unsafe_allow_html=True)
 
     # ── Formulario de edición ──────────────────────────────
@@ -436,23 +448,105 @@ elif st.session_state["modulo_control"] == "precios":
 
         if editando:
             st.markdown('<div class="card">', unsafe_allow_html=True)
+            valor_actual = int(precios.get(editando, 0))
 
-            if editando == "precio_hora":
-                st.markdown('<div class="seccion" style="margin-top:0">Editar precio hora</div>', unsafe_allow_html=True)
-                nuevo_precio = st.number_input(
-                    "Nuevo precio por hora (CR)",
-                    min_value=0, step=10,
-                    value=int(precio_hora),
-                    key="nuevo_precio_hora"
-                )
+            if "hora" in editando:
+                num = editando.split("_")[-1]
+                st.markdown(f'<div class="seccion" style="margin-top:0">Editar precio hora {num}</div>', unsafe_allow_html=True)
+                nuevo_precio = st.number_input(f"Nuevo precio hora {num} (₡)", min_value=0, step=10, value=valor_actual, key=f"nuevo_{editando}")
             else:
-                st.markdown('<div class="seccion" style="margin-top:0">Editar precio cajuela</div>', unsafe_allow_html=True)
-                nuevo_precio = st.number_input(
-                    "Nuevo precio por cajuela (CR)",
-                    min_value=0, step=10,
-                    value=int(precio_cajuela),
-                    key="nuevo_precio_cajuela"
-                )
+                num = editando.split("_")[-1]
+                st.markdown(f'<div class="seccion" style="margin-top:0">Editar precio cajuela {num}</div>', unsafe_allow_html=True)
+                nuevo_precio = st.number_input(f"Nuevo precio cajuela {num} (₡)", min_value=0, step=10, value=valor_actual, key=f"nuevo_{editando}")
+
+            col_g, col_c = st.columns(2)
+            with col_g:
+                if st.button("💾 Guardar", type="primary", use_container_width=True, key="guardar_precio"):
+                    actualizar_precio(editando, nuevo_precio)
+                    st.success("✅ Precio actualizado.")
+                    st.session_state["editando"] = None
+                    st.cache_data.clear()
+                    st.rerun()
+            with col_c:
+                if st.button("Cancelar", use_container_width=True, key="cancelar_precio"):
+                    st.session_state["editando"] = None
+                    st.rerun()
+
+            st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="card" style="text-align:center; padding:40px;">
+                <div style="font-size:32px; margin-bottom:12px;">✏️</div>
+                <div style="color:#BFC9C4; font-size:13px;">Presioná el botón de editar<br>junto al precio que querés cambiar</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+elif st.session_state["modulo_control"] == "precios":
+
+    st.markdown('<div class="seccion">💰 Precios actuales</div>', unsafe_allow_html=True)
+
+    try:
+        precios = leer_precios()
+    except Exception as e:
+        st.error(f"Error cargando precios: {e}")
+        st.stop()
+
+    col_tabla, col_form = st.columns([3, 2])
+
+    with col_tabla:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+
+        # ── Precios por hora ───────────────────────────────
+        st.markdown('<div class="fila-nombre" style="margin-bottom:8px;">Precios por hora</div>', unsafe_allow_html=True)
+
+        for i in range(1, 4):
+            key = f"precio_hora_{i}"
+            valor = int(precios.get(key, 0))
+            col_n, col_v, col_x = st.columns([2, 2, 1])
+            with col_n:
+                st.markdown(f'<div class="fila-sub">Precio hora {i}</div>', unsafe_allow_html=True)
+            with col_v:
+                st.markdown(f'<div class="fila-sub">₡{valor:,}</div>', unsafe_allow_html=True)
+            with col_x:
+                if st.button("✏️", key=f"edit_{key}", help=f"Editar precio hora {i}"):
+                    st.session_state["editando"] = key
+            st.divider()
+
+        # ── Precios por cajuela ────────────────────────────
+        st.markdown('<div class="fila-nombre" style="margin-bottom:8px;">Precios por cajuela</div>', unsafe_allow_html=True)
+
+        for i in range(1, 4):
+            key = f"precio_cajuela_{i}"
+            valor = int(precios.get(key, 0))
+            col_n, col_v, col_x = st.columns([2, 2, 1])
+            with col_n:
+                st.markdown(f'<div class="fila-sub">Precio cajuela {i}</div>', unsafe_allow_html=True)
+            with col_v:
+                st.markdown(f'<div class="fila-sub">₡{valor:,}</div>', unsafe_allow_html=True)
+            with col_x:
+                if st.button("✏️", key=f"edit_{key}", help=f"Editar precio cajuela {i}"):
+                    st.session_state["editando"] = key
+            st.divider()
+
+        st.caption("Estos precios aparecen como opciones al registrar jornales y cosecha.")
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # ── Formulario de edición ──────────────────────────────
+    with col_form:
+        editando = st.session_state.get("editando", None)
+
+        if editando:
+            st.markdown('<div class="card">', unsafe_allow_html=True)
+            valor_actual = int(precios.get(editando, 0))
+
+            if "hora" in editando:
+                num = editando.split("_")[-1]
+                st.markdown(f'<div class="seccion" style="margin-top:0">Editar precio hora {num}</div>', unsafe_allow_html=True)
+                nuevo_precio = st.number_input(f"Nuevo precio hora {num} (₡)", min_value=0, step=10, value=valor_actual, key=f"nuevo_{editando}")
+            else:
+                num = editando.split("_")[-1]
+                st.markdown(f'<div class="seccion" style="margin-top:0">Editar precio cajuela {num}</div>', unsafe_allow_html=True)
+                nuevo_precio = st.number_input(f"Nuevo precio cajuela {num} (₡)", min_value=0, step=10, value=valor_actual, key=f"nuevo_{editando}")
 
             col_g, col_c = st.columns(2)
             with col_g:

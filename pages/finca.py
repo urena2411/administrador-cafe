@@ -10,6 +10,10 @@ from utils.sheets import leer_hoja, agregar_fila
 from utils.calculos import cajuelas_a_texto, cajuelas_a_fanegas
 from utils.sheets import leer_hoja, agregar_fila, leer_precios
 
+def redondear_colones(valor: float) -> int:
+    """Redondea al múltiplo de 10 más cercano. Ej: 5687 → 5690"""
+    return round(valor / 10) * 10
+
 st.set_page_config(
     page_title="Finca · Fincas Ureña",
     page_icon="☕",
@@ -162,7 +166,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ── Cargar datos desde Google Sheets ──────────────────────
-@st.cache_data(ttl=30)
+@st.cache_data(ttl=300)
 def cargar_datos():
     # Lee todas las hojas necesarias y las devuelve en un diccionario
     return {
@@ -172,14 +176,25 @@ def cargar_datos():
         "cosecha":  leer_hoja("Cosecha"),
         "suelos":   leer_hoja("Suelos"),
     }
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=300)
 def cargar_precios():
     """Lee los precios fijos desde Google Sheets."""
     return leer_precios()
 
-precios_actuales    = cargar_precios()
-precio_hora_fijo    = int(precios_actuales.get("precio_hora", 1330))
-precio_cajuela_fijo = int(precios_actuales.get("precio_cajuela", 1200))
+precios_actuales = cargar_precios()
+
+# Construir listas de opciones para los selectbox
+opciones_hora = {
+    f"₡{int(precios_actuales.get(f'precio_hora_{i}', 0)):,}": int(precios_actuales.get(f"precio_hora_{i}", 0))
+    for i in range(1, 4)
+    if precios_actuales.get(f"precio_hora_{i}", 0) > 0
+}
+
+opciones_cajuela = {
+    f"₡{int(precios_actuales.get(f'precio_cajuela_{i}', 0)):,}": int(precios_actuales.get(f"precio_cajuela_{i}", 0))
+    for i in range(1, 4)
+    if precios_actuales.get(f"precio_cajuela_{i}", 0) > 0
+}
 
 try:
     datos = cargar_datos()
@@ -305,15 +320,14 @@ with tab_list[0]:
         j_tarea  = st.text_input("Tarea", placeholder="Ej: Fertilización, Chapea...", key=f"j_tarea_{c}")
     with col2:
         j_horas = st.number_input("¿Cuántas horas?", min_value=0.0, max_value=12.0, step=0.5, value=None, placeholder=" ", key=f"j_horas_{c}")
-        # Precio fijo desde Panel de Control
-        st.markdown(f"""
-        <div style="background:#0E3338; border:1px solid rgba(217,164,65,0.18); border-radius:10px; padding:11px 14px; margin-top:4px;">
-            <div style="font-size:11px; color:#BFC9C4; margin-bottom:4px;">Precio por hora</div>
-            <div style="font-size:16px; font-weight:600; color:#F0C36B;">₡{precio_hora_fijo:,}</div>
-            <div style="font-size:10px; color:#6B5040; margin-top:2px;">Editá en Panel de Control → Precios</div>
-        </div>
-        """, unsafe_allow_html=True)
-        j_precio = precio_hora_fijo
+        
+        # Selector de precio por hora
+        precio_hora_label = st.selectbox(
+            "Precio por hora",
+            options=list(opciones_hora.keys()),
+            key=f"j_precio_sel_{c}"
+        )
+        j_precio = opciones_hora[precio_hora_label]
         j_total  = (j_horas or 0) * j_precio
 
     if st.button("💾 Guardar jornal", type="primary", key=f"btn_jornal_{c}"):
@@ -423,15 +437,14 @@ with tab_list[2]:
         co_recolector = st.selectbox("Seleccioná el recolector", ["Seleccioná el recolector"] + peones, key=f"co_recolector_{cco}")
     with col2:
         co_cajuelas = st.number_input("¿Cuántas cajuelas?", min_value=0.0, step=0.25, value=None, placeholder=" ", key=f"co_cajuelas_{cco}")
-        # Precio fijo desde Panel de Control
-        st.markdown(f"""
-        <div style="background:#0E3338; border:1px solid rgba(217,164,65,0.18); border-radius:10px; padding:11px 14px; margin-top:4px;">
-            <div style="font-size:11px; color:#BFC9C4; margin-bottom:4px;">Precio por cajuela</div>
-            <div style="font-size:16px; font-weight:600; color:#F0C36B;">₡{precio_cajuela_fijo:,}</div>
-            <div style="font-size:10px; color:#6B5040; margin-top:2px;">Editá en Panel de Control → Precios</div>
-        </div>
-        """, unsafe_allow_html=True)
-        co_precio = precio_cajuela_fijo
+        
+        # Selector de precio por cajuela
+        precio_cajuela_label = st.selectbox(
+            "Precio por cajuela",
+            options=list(opciones_cajuela.keys()),
+            key=f"co_precio_sel_{cco}"
+        )
+        co_precio = opciones_cajuela[precio_cajuela_label]
         co_total  = (co_cajuelas or 0) * co_precio
 
     if finca == "El Jocote" and (co_cajuelas or 0) > 0:
@@ -517,9 +530,9 @@ with tab_list[2]:
         # Tabla completa de cosecha de esta finca
         st.markdown('<div class="seccion">Cosecha registrada</div>', unsafe_allow_html=True)
         df_c = c_finca[["fecha","recolector","cajuelas","precio_cajuela"]].copy()
-        df_c["total"] = pd.to_numeric(df_c["cajuelas"], errors="coerce").fillna(0) * pd.to_numeric(df_c["precio_cajuela"], errors="coerce").fillna(0)
+        df_c["total"] = (pd.to_numeric(df_c["cajuelas"], errors="coerce") * pd.to_numeric(df_c["precio_cajuela"], errors="coerce")).apply(redondear_colones)
         df_c["fecha"] = pd.to_datetime(df_c["fecha"]).dt.strftime("%d/%m/%Y")
-        df_c["total"] = df_c["total"].apply(lambda x: f"₡{int(x):,}")
+        df_c["total"] = df_c["total"].apply(lambda x: f"₡{x:,}")
         df_c = df_c[["fecha","recolector","cajuelas","precio_cajuela","total"]]
         df_c.columns = ["Fecha","Recolector","Cajuelas","₡/cajuela","Total"]
         st.dataframe(df_c, use_container_width=True, hide_index=True)

@@ -8,6 +8,11 @@ import pandas as pd
 from datetime import date, datetime
 from utils.sheets import leer_hoja
 
+
+def redondear_colones(valor: float) -> int:
+    """Redondea al múltiplo de 10 más cercano. Ej: 5687 → 5690"""
+    return round(valor / 10) * 10
+
 st.set_page_config(
     page_title="Cierre Anual · Administrador Café",
     page_icon="📊",
@@ -142,7 +147,7 @@ with col2:
     )
     
 # ── Cargar datos ───────────────────────────────────────────
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=300)
 def cargar_datos():
     return {
         "jornales": leer_hoja("Jornales"),
@@ -311,8 +316,8 @@ if finca_sel == "Todas":
             "Finca": f,
             "Jornales": f"CRC{int(j_f):,}",
             "Insumos": f"CRC{int(i_f):,}",
-            "Recolección": f"CRC{int(r_f):,}",
-            "Total gastos": f"CRC{int(j_f + i_f + r_f):,}",
+            "Recolección": f"₡{redondear_colones(r_f):,}",
+            "Total gastos": f"₡{redondear_colones(j_f + i_f + r_f):,}",
             "Cajuelas": f"{round(c_f * 4) / 4:.2f}"
         })
     st.dataframe(pd.DataFrame(filas_finca), use_container_width=True, hide_index=True)
@@ -341,10 +346,9 @@ if not c_ciclo.empty:
     st.markdown('<div class="seccion">Detalle de cosecha</div>', unsafe_allow_html=True)
     df_c_mostrar = c_ciclo[["fecha","recolector","finca","cajuelas","precio_cajuela","pago"]].copy()
     df_c_mostrar["fecha"] = df_c_mostrar["fecha"].dt.strftime("%d/%m/%Y")
-    df_c_mostrar["pago"]  = df_c_mostrar["pago"].fillna(0).apply(lambda x: f"CRC{int(x):,}")
-    df_c_mostrar.columns  = ["Fecha","Recolector","Finca","Cajuelas","CRC/cajuela","Pago"]
+    df_c_mostrar["pago"]  = df_c_mostrar["pago"].fillna(0).apply(lambda x: f"₡{redondear_colones(x):,}")
+    df_c_mostrar.columns  = ["Fecha","Recolector","Finca","Cajuelas","₡/cajuela","Pago"]
     st.dataframe(df_c_mostrar, use_container_width=True, hide_index=True)
-
 # ── Observaciones IA ──────────────────────────────────────
 st.markdown('<div class="seccion">🤖 Observaciones automáticas</div>', unsafe_allow_html=True)
 
@@ -499,7 +503,7 @@ if st.button("📥 Descargar PDF", type="primary"):
     # Desglose por finca
     if finca_sel == "Todas":
         contenido.append(Paragraph("Desglose por Finca", estilo_seccion))
-        datos_finca_pdf = [["Finca","Jornales","Insumos","Recolección","Total","Cajuelas"]]
+        datos_finca_pdf.append([f, f"CR{redondear_colones(j_f):,}", f"CR{redondear_colones(i_f):,}", f"CR{redondear_colones(r_f):,}", f"CR{redondear_colones(j_f+i_f+r_f):,}", f"{round(c_f*4)/4:.2f}"])
         for f in fincas:
             j_f = j_ciclo[j_ciclo["finca"] == f]["pago"].sum() if not j_ciclo.empty and "finca" in j_ciclo.columns else 0
             i_f = i_ciclo[i_ciclo["finca"] == f]["costo_total"].sum() if not i_ciclo.empty and "finca" in i_ciclo.columns else 0

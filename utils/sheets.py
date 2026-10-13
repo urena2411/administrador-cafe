@@ -62,8 +62,9 @@ def agregar_fila(nombre_hoja: str, fila: list):
 
 def leer_precios() -> dict:
     """
-    Lee los precios actuales desde la hoja Precios.
-    Retorna un diccionario con precio_hora y precio_cajuela.
+    Lee los precios desde la hoja Precios.
+    Retorna un diccionario con todos los precios disponibles.
+    Ejemplo: {'precio_hora_1': 1300, 'precio_hora_2': 1500, ...}
     """
     try:
         hoja  = get_sheet("Precios")
@@ -73,7 +74,15 @@ def leer_precios() -> dict:
             precios[str(fila["concepto"]).strip()] = float(fila["precio"])
         return precios
     except Exception:
-        return {"precio_hora": 1330, "precio_cajuela": 1200}
+        # Valores por defecto si falla la conexión
+        return {
+            "precio_hora_1": 1300,
+            "precio_hora_2": 1500,
+            "precio_hora_3": 1700,
+            "precio_cajuela_1": 1200,
+            "precio_cajuela_2": 1300,
+            "precio_cajuela_3": 1400,
+        }
 
 
 def actualizar_precio(concepto: str, nuevo_precio: float):
